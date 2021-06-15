@@ -68,7 +68,7 @@ import static io.requery.query.element.QueryType.UPDATE;
  */
 class EntityWriter<E extends S, S> implements ParameterBinder<E> {
 
-    private enum Cascade { AUTO, INSERT, UPDATE, UPSERT }
+    private enum Cascade { AUTO, INSERT, UPDATE, UPSERT, DELETE }
 
     private final EntityCache cache;
     private final EntityModel model;
@@ -836,11 +836,16 @@ class EntityWriter<E extends S, S> implements ParameterBinder<E> {
                                          Object value) {
         EntityProxy<S> proxy = context.proxyOf(entity, false);
         Attribute<S, Object> mapped = Attributes.get(attribute.getMappedAttribute());
-        proxy.set(mapped, value, PropertyState.MODIFIED);
-        if(attribute.getCascadeActions().contains(CascadeAction.SAVE)) {
-            cascadeWrite(mode, entity, proxy);
-        }else{
-            cascadeWrite(Cascade.UPDATE, entity, proxy);
+        // If FK attribute in the child is not nullable then force child deletion
+        if (!mapped.isNullable() && value == null) {
+            cascadeWrite(Cascade.DELETE, entity, proxy);
+        } else {
+            proxy.set(mapped, value, PropertyState.MODIFIED);
+            if (attribute.getCascadeActions().contains(CascadeAction.SAVE)) {
+                cascadeWrite(mode, entity, proxy);
+            } else {
+                cascadeWrite(Cascade.UPDATE, entity, proxy);
+            }
         }
     }
 
@@ -944,6 +949,9 @@ class EntityWriter<E extends S, S> implements ParameterBinder<E> {
                 mode = proxy.isLinked()? Cascade.UPDATE : Cascade.UPSERT;
             }
             switch (mode) {
+                case DELETE:
+                    writer.delete(entity, proxy);
+                    break;
                 case INSERT:
                     writer.insert(entity, proxy, mode, null);
                     break;
