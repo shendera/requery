@@ -42,12 +42,14 @@ import io.requery.test.model.Address;
 import io.requery.test.model.Child;
 import io.requery.test.model.ChildManyToManyNoCascade;
 import io.requery.test.model.ChildManyToOneNoCascade;
+import io.requery.test.model.ChildOneToManyDeleteRemoved;
 import io.requery.test.model.ChildOneToManyNoCascade;
 import io.requery.test.model.ChildOneToOneNoCascade;
 import io.requery.test.model.Group;
 import io.requery.test.model.GroupType;
 import io.requery.test.model.Group_Person;
 import io.requery.test.model.Parent;
+import io.requery.test.model.ParentDeleteRemoved;
 import io.requery.test.model.ParentNoCascade;
 import io.requery.test.model.Person;
 import io.requery.test.model.Phone;
@@ -1806,6 +1808,25 @@ public abstract class FunctionalTest extends RandomData {
         assertNotNull(child1Got);
         ChildManyToManyNoCascade child2Got = data.findByKey(ChildManyToManyNoCascade.class, 2);
         assertNotNull(child2Got);
+    }
+
+    @Test
+    public void testDeleteRemovedChild_OneToMany() {
+        ChildOneToManyDeleteRemoved child1 = new ChildOneToManyDeleteRemoved();
+        child1.setId(1);
+        child1.setAttribute("1");
+        ParentDeleteRemoved parent = new ParentDeleteRemoved();
+        parent.setId(1);
+        parent.getOneToMany().add(child1);
+        data.insert(parent);
+
+        // Update children list in parent
+        parent = data.findByKey(ParentDeleteRemoved.class,1);
+        parent.getOneToMany().clear();
+        data.update(parent);
+
+        // Assert that child have been deleted
+        assertNull(data.findByKey(ChildOneToManyDeleteRemoved.class, 1));
     }
 
 }
